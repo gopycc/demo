@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>snake game</title>
+    </head>
+    <body>
+        <canvas id="game" width="300" height="300"></canvas>
+        <div>空格键暂停或继续</div>
+    </body>
+    <script type="text/javascript">
+    const CANVAS_SIZE = 30;
+    const SNAKE_LEN = 5;
+    const SCALE = 10; //像素比例
+    const SPACE = 32;
+    const DIRECT_UP = 1;
+    const DIRECT_RIGHT = 2;
+    const DIRECT_DOWN = 3;
+    const DIRECT_LEFT = 4;
+    class Game {
+        constructor(elem){
+            this.elem = elem;
+            this.started = false;
+            this.keymap = {37:DIRECT_LEFT,38:DIRECT_UP,39:DIRECT_RIGHT,40:DIRECT_DOWN}
+            this.canvas = new Canvas(this.elem, "black", SCALE, CANVAS_SIZE);
+        }
+        reset() {
+            this.canvas.clear();
+            this.snake = new Snake(this.canvas, "green", SNAKE_LEN);
+            this.feeding();
+            this.started = true;
+            return this;
+        }
+        start(){
+            this.reset();
+            var self = this;
+            this.interval = setInterval(function(){
+                if(self.started) { self.moveSnake(); }
+            },100);
+            return this;
+        }
+        feeding(){
+            this.food = new Food(this.canvas, "red");
+        }
+        moveSnake(){
+            var next = this.snake.getNext();
+            if(this.snake.outside(next)) {this.over();return;}
+            if(this.snake.eatSelf(next)) {this.over();return;}
+            if(this.food.isHere(next)) {
+                this.snake.eat(next);
+                this.feeding();
+            } else {
+                this.snake.move(next);
+            }
+        }
+        over() {
+            this.started = false;
+            alert('game over');
+            this.reset();
+        }
+        input(e){
+            if(e.which == SPACE){
+                this.started = !this.started;
+                return;
+            }
+            var direct = this.keymap[e.which];
+            if(direct){
+                this.snake.change(direct);
+            }
+        }
+    }
+    class Point {
+        constructor(x, y){
+            this.x = x;
+            this.y = y;
+        }
+        equals(p){
+            return this.x == p.x && this.y == p.y;
+        }
+    }
+    class Canvas {
+        constructor(elem, bg, scale, size){
+            this.bg = bg;
+            this.scale = scale;
+            this.size = size;
+            this.elem = elem;
+            var canvas = document.getElementById(elem);
+            this.ctx = canvas.getContext("2d");
+            this.clear();
+        }
+        get_size() {
+            return this.size;
+        }
+        draw(point, color) {
+            this.ctx.fillStyle = color;
+            this.ctx.fillRect(point.x*this.scale, point.y*this.scale, this.scale, this.scale);
+        }
+        remove(point) {
+            this.draw(point, this.bg);
+        }
+        clear() {
+            this.ctx.fillStyle = this.bg;
+            this.ctx.fillRect(0, 0, this.size*this.scale, this.size*this.scale);
+        }
+    }
+    class Snake {
+        constructor(canvas, color, len){
+            this.canvas = canvas;
+            this.color = color;
+            this.points = [];
+            this.forward = DIRECT_RIGHT;
+            for (let i = 0; i < len; i++) {
+                var point = new Point(i,0);
+                this.points.push(point);
+                this.canvas.draw(point, this.color);    
+            }
+        }
+        change(direct) {
+            if(Math.abs(this.forward-direct)%2 == 1){
+                this.forward = direct;
+            }
+        }
+        move(point) {
+            this.canvas.remove(this.tail());
+            this.points.shift();
+            this.points.push(point);
+            this.canvas.draw(point, this.color);
+        }
+        getNext() {
+            var head = this.head();
+            var x = head.x;
+            var y = head.y;
+            switch (this.forward) {
+                case DIRECT_UP: y--; break;
+                case DIRECT_DOWN: y++; break;
+                case DIRECT_LEFT: x--; break;
+                case DIRECT_RIGHT: x++; break;
+            }
+            return new Point(x,y);
+        }
+        eat(point) {
+            this.points.push(point);
+            this.canvas.draw(point, this.color);
+        }
+        outside(point) {
+            var size = this.canvas.get_size();
+            console.log("["+point.x+","+point.y+"]");
+            return point.x < 0 || point.y < 0 || point.x > size || point.y > size;  
+        }
+        eatSelf(point) {
+           for (var i = 0; i < this.points.length; i++) {
+                if(this.points[i].equals(point))
+                    return true;
+           }
+           return false;
+        }
+        head(){
+            return this.points[this.points.length-1];
+        }
+        tail(){
+            return this.points[0];
+        }
+    }
+    class Food {
+        constructor(canvas, color){
+            this.canvas = canvas;
+            this.color = color;
+            var x = parseInt(Math.random()*canvas.get_size());
+            var y = parseInt(Math.random()*canvas.get_size());
+            this.point = new Point(x,y);
+            this.canvas.draw(this.point, this.color);
+        }
+        isHere(point) {
+            return point.equals(this.point);
+        }
+    }
+    var game = new Game("game");
+    document.onkeydown = function(e) {
+        game.input(e);
+    }
+    game.start();
+    </script>
+</html>
